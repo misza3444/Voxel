@@ -1,0 +1,136 @@
+name: Build VoxelForge Portable (Windows + Web)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+    paths:
+      - 'src/**'
+      - 'scenes/**'
+      - 'tests/**'
+      - 'scripts/**'
+      - 'project.godot'
+      - 'export_presets.cfg'
+      - 'packaging/**'
+      - '.github/workflows/portable.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    name: Export Godot 4.7.2
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download official Godot editor and matching export templates
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="4.7.2-stable"
+          URL="https://github.com/godotengine/godot/releases/download/${VERSION}"
+          mkdir -p "$RUNNER_TEMP/godot-bin"
+          curl --fail --location --retry 3 "${URL}/Godot_v${VERSION}_linux.x86_64.zip" -o "$RUNNER_TEMP/godot-bin/editor.zip"
+          curl --fail --location --retry 3 "${URL}/Godot_v${VERSION}_export_templates.tpz" -o "$RUNNER_TEMP/godot-bin/templates.tpz"
+          curl --fail --location --retry 3 "${URL}/SHA512-SUMS.txt" -o "$RUNNER_TEMP/godot-bin/SHA512-SUMS.txt"
+          EDITOR_HASH=$(awk '/Godot_v4.7.2-stable_linux.x86_64.zip$/ {print $1}' "$RUNNER_TEMP/godot-bin/SHA512-SUMS.txt")
+          TEMPLATE_HASH=$(awk '/Godot_v4.7.2-stable_export_templates.tpz$/ {print $1}' "$RUNNER_TEMP/godot-bin/SHA512-SUMS.txt")
+          test -n "$EDITOR_HASH" && test -n "$TEMPLATE_HASH"
+          echo "$EDITOR_HASH  $RUNNER_TEMP/godot-bin/editor.zip" | sha512sum -c -
+          echo "$TEMPLATE_HASH  $RUNNER_TEMP/godot-bin/templates.tpz" | sha512sum -c -
+          unzip -q "$RUNNER_TEMP/godot-bin/editor.zip" -d "$RUNNER_TEMP/godot-bin"
+          mv "$RUNNER_TEMP/godot-bin/Godot_v${VERSION}_linux.x86_64" "$RUNNER_TEMP/godot-bin/godot"
+          chmod +x "$RUNNER_TEMP/godot-bin/godot"
+          echo "$RUNNER_TEMP/godot-bin" >> "$GITHUB_PATH"
+          mkdir -p "$HOME/.local/share/godot/export_templates/4.7.2.stable"
+          unzip -q -j "$RUNNER_TEMP/godot-bin/templates.tpz" \
+            'templates/windows_release_x86_64.exe' \
+            'templates/web_nothreads_release.zip' \
+            'templates/web_nothreads_debug.zip' \
+            -d "$HOME/.local/share/godot/export_templates/4.7.2.stable"
+          godot --version
+          ls -lh "$HOME/.local/share/godot/export_templates/4.7.2.stable/"
+
+      - name: Import Godot resources
+        run: python3 scripts/run_godot.py -- godot --headless --path . --editor --import
+
+      - name: Run Stage 01 tests
+        run: |
+          python3 scripts/run_godot.py --expect 'PASS: 5 chunk/mesh test cases' -- godot --headless --path . --script res://tests/test_stage_01.gd
+
+      - name: Run Stage 02 tests
+        run: python3 scripts/run_godot.py --expect VOXELFORGE_STAGE02_OK -- godot --headless --path . --script res://tests/test_stage_02.gd
+
+      - name: Run Stage 03 physics and editing tests
+        run: python3 scripts/run_godot.py --expect VOXELFORGE_STAGE03_OK --timeout 90 -- godot --headless --path . --script res://tests/test_stage_03.gd
+
+      - name: Run Stage 04 generator and regeneration tests
+        run: python3 scripts/run_godot.py --expect VOXELFORGE_STAGE04_OK --timeout 90 -- godot --headless --path . --script res://tests/test_stage_04.gd
+
+      - name: Exercise first-person scene and terrain collisions
+        run: python3 scripts/run_godot.py --expect VOXELFORGE_SMOKE_OK --timeout 45 -- godot --headless --path . -- --smoke-test
+
+      - name: Export Windows EXE Portable
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/windows
+          python3 scripts/run_godot.py -- godot --headless --path . --export-release 'Windows Desktop' build/windows/VoxelForge.exe
+          test -s build/windows/VoxelForge.exe
+          python3 scripts/check_windows_exe.py build/windows/VoxelForge.exe
+          cp packaging/GODOT_LICENSE.txt build/windows/GODOT_LICENSE.txt
+          cp packaging/GODOT_COPYRIGHT.txt build/windows/GODOT_COPYRIGHT.txt
+          cp packaging/START_HERE.txt build/windows/START_HERE.txt
+
+      - name: Export Web
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/web
+          python3 scripts/run_godot.py -- godot --headless --path . --export-release Web build/web/index.html
+          test -s build/web/index.html
+          test -s build/web/index.wasm
+          test -s build/web/index.pck
+          cp packaging/GODOT_LICENSE.txt build/web/GODOT_LICENSE.txt
+          cp build/windows/GODOT_COPYRIGHT.txt build/web/GODOT_COPYRIGHT.txt
+
+      - name: Upload Windows portable build
+        uses: actions/upload-artifact@v4
+        with:
+          name: VoxelForge-Windows-Portable
+          path: build/windows/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload Web build
+        uses: actions/upload-artifact@v4
+        with:
+          name: VoxelForge-Web
+          path: build/web/
+          if-no-files-found: error
+          retention-days: 30
+
+  smoke-test-windows:
+    name: Smoke test Windows EXE
+    needs: export
+    runs-on: windows-2025
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download Windows portable build
+        uses: actions/download-artifact@v4
+        with:
+          name: VoxelForge-Windows-Portable
+          path: portable
+      - name: Check and launch EXE headlessly
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $exe = (Resolve-Path './portable/VoxelForge.exe').Path
+          $bytes = [IO.File]::ReadAllBytes($exe)
+          if ($bytes.Length -lt 1000000 -or $bytes[0] -ne 0x4D -or $bytes[1] -ne 0x5A) { throw 'Invalid Windows EXE' }
+          python scripts/run_godot.py --expect VOXELFORGE_SMOKE_OK --timeout 45 -- $exe --headless -- --smoke-test
+          if ($LASTEXITCODE -ne 0) { throw 'Windows runtime smoke test failed' }
+          Write-Host 'PASS: Windows EXE loads world, player collisions and voxel targeting.'

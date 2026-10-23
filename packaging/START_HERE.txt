@@ -1,0 +1,23 @@
+VOXELFORGE — ETAP 04 — WINDOWS PORTABLE x86_64
+
+1. Wypakuj cały ZIP do folderu.
+2. Uruchom VoxelForge.exe i wybierz ZAGRAJ.
+Bez instalatora, edytora Godot i plików BAT. Dane gry są osadzone w EXE.
+
+Menu: wpisz seed (liczbę lub tekst), następnie Generuj nowy świat.
+Losuj zmienia pole seeda. Nowe generowanie usuwa zmiany tej sesji.
+Odkryj wejście do jaskini przenosi na początek zejścia.
+Świat ma rozmiar 64×64×64.
+
+WASD — ruch; mysz — rozglądanie
+Spacja — skok; Shift — sprint
+LPM — zniszcz wskazany blok; PPM — postaw wybrany materiał
+1–6 lub kółko myszy — wybór materiału
+Esc — pauza i zwolnienie kursora; R — powrót na bezpieczny grunt
+F11 — pełny ekran
+
+Jeden klik to jedna edycja. Po edycji może wystąpić krótkie zatrzymanie ruchu podczas aktualizacji terenu.
+Materiały są nieograniczone. Brak craftingu i obrażeń. Nie ma jeszcze zapisu — zamknięcie gry usuwa zmiany.
+
+Wymagania: 64-bitowy Windows, sterownik zgodny z OpenGL 3.3.
+Godot 4.7.2 Standard / Compatibility. Gra działa bez Internetu.

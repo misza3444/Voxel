@@ -1,0 +1,8 @@
+.godot/
+build/
+__pycache__/
+*.pyc
+*.zip
+*.exe
+*.pck
+*.wasm

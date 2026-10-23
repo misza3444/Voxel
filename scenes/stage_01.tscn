@@ -1,0 +1,51 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/demo/stage_01.gd" id="1_script"]
+
+[node name="Stage01" type="Node3D"]
+script = ExtResource("1_script")
+
+[node name="ChunkMesh" type="MeshInstance3D" parent="."]
+
+[node name="CameraPivot" type="Node3D" parent="."]
+
+[node name="Camera3D" type="Camera3D" parent="CameraPivot"]
+position = Vector3(0, 0, 25)
+current = true
+fov = 56.0
+near = 0.1
+far = 100.0
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+rotation_degrees = Vector3(-54, -33, 0)
+light_energy = 1.05
+shadow_enabled = true
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+
+[node name="HUD" type="CanvasLayer" parent="."]
+
+[node name="Panel" type="PanelContainer" parent="HUD"]
+offset_left = 20.0
+offset_top = 20.0
+offset_right = 332.0
+offset_bottom = 188.0
+
+[node name="Margin" type="MarginContainer" parent="HUD/Panel"]
+layout_mode = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 12
+
+[node name="Column" type="VBoxContainer" parent="HUD/Panel/Margin"]
+layout_mode = 2
+
+[node name="Heading" type="Label" parent="HUD/Panel/Margin/Column"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "VOXELFORGE"
+
+[node name="Stats" type="Label" parent="HUD/Panel/Margin/Column"]
+layout_mode = 2
+text = "Start..."
