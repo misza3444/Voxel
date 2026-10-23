@@ -50,7 +50,7 @@ jobs:
             'templates/web_nothreads_release.zip' \
             'templates/web_nothreads_debug.zip' \
             -d "$HOME/.local/share/godot/export_templates/4.7.2.stable"
-          godot --version
+          "$RUNNER_TEMP/godot-bin/godot" --version
           ls -lh "$HOME/.local/share/godot/export_templates/4.7.2.stable/"
 
       - name: Import Godot resources
